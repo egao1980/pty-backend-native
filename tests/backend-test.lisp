@@ -110,7 +110,8 @@
 (progn
   (deftest output-and-exit-code
     (pp:with-pty (p '("cmd.exe" "/c" "echo hello& exit 7"))
-      (ok (search "hello" (read-all p)))
+      (let ((out (read-all p)))
+        (ok (search "hello" out) (format nil "read ~S" out)))
       (ok (equal (multiple-value-list (pp:pty-wait p :timeout 10)) '(7 nil)))))
 
   (deftest initial-size
@@ -119,7 +120,8 @@
 
   (deftest environment
     (pp:with-pty (p '("cmd.exe" "/c" "echo %FOO%") :environment '(("FOO" . "bar")))
-      (ok (search "bar" (read-all p :timeout 10)))))
+      (let ((out (read-all p :timeout 10)))
+        (ok (search "bar" out) (format nil "read ~S" out)))))
 
   (deftest spawn-error-keeps-code
     (let ((c (handler-case (pp:spawn-pty '("definitely-not-a-command-xyz.exe"))
