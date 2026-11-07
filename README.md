@@ -9,6 +9,8 @@
 
 No Lisp code runs in a forked child.
 
+**Known ConPTY limitation:** on Windows Server 2022 / Windows 10, if a program writes and exits at once (`cmd /c echo hi`), ConPTY can drop that last frame before the pseudo console closes. Programs that stay up even briefly, like shells, editors and REPLs, are unaffected. Newer Windows 11 builds flush on close.
+
 ## Overlays
 
 `linux/amd64` and `linux/arm64` (glibc ≥ 2.31) get `libpty-cl.so`, `darwin/arm64` gets `libpty-cl.dylib`, and `windows/amd64` gets `pty-cl.dll`. `scripts/build-pty-cl.sh [os-arch …]` builds them with `zig cc`, which cross-compiles every target from one host. `PTY_CL_NATIVE=/dir` points the loader elsewhere.

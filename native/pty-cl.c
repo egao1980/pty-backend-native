@@ -536,7 +536,7 @@ static DWORD WINAPI closer_thread(LPVOID hpc) {
  * is read. Close it on a thread and keep reading until the pipe breaks.
  * Closing too early drops output ConPTY has not rendered yet (a quick
  * `echo` vanishes), so wait until output has been quiet for QUIET_MS. */
-#define QUIET_MS 500
+#define QUIET_MS 200
 static void start_closing(pty_cl_t *p) {
   if (p->hpc && !p->closer) {
     p->closer = CreateThread(NULL, 0, closer_thread, p->hpc, 0, NULL);

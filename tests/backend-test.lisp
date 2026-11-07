@@ -2,7 +2,9 @@
 
 ;;; Real children on a real pty. Unix tests use /bin/sh; Windows uses cmd.exe,
 ;;; whose ConPTY output also carries VT setup sequences, so Windows checks
-;;; search for text rather than compare bytes.
+;;; search for text rather than compare bytes. On Windows Server 2022, ConPTY
+;;; drops the last frame of a client that exits immediately after writing,
+;;; so the Windows commands linger a moment (ping) before exiting.
 
 (defun octets (s) (map '(vector (unsigned-byte 8)) #'char-code s))
 
@@ -109,7 +111,7 @@
 #+windows
 (progn
   (deftest output-and-exit-code
-    (pp:with-pty (p '("cmd.exe" "/c" "echo hello& exit 7"))
+    (pp:with-pty (p '("cmd.exe" "/c" "echo hello& ping -n 2 127.0.0.1 >nul& exit 7"))
       (let ((out (read-all p)))
         (ok (search "hello" out) (format nil "read ~S" out)))
       (ok (equal (multiple-value-list (pp:pty-wait p :timeout 10)) '(7 nil)))))
@@ -119,7 +121,8 @@
       (ok (search "100" (read-all p :timeout 10)))))
 
   (deftest environment
-    (pp:with-pty (p '("cmd.exe" "/c" "echo %FOO%") :environment '(("FOO" . "bar")))
+    (pp:with-pty (p '("cmd.exe" "/c" "echo %FOO%& ping -n 2 127.0.0.1 >nul")
+                    :environment '(("FOO" . "bar")))
       (let ((out (read-all p :timeout 10)))
         (ok (search "bar" out) (format nil "read ~S" out)))))
 
