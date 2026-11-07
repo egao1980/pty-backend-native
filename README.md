@@ -9,7 +9,7 @@
 
 No Lisp code runs in a forked child.
 
-**Known ConPTY limitation:** on Windows Server 2022 / Windows 10, if a program writes and exits at once (`cmd /c echo hi`), ConPTY can drop that last frame before the pseudo console closes. Programs that stay up even briefly, like shells, editors and REPLs, are unaffected. Newer Windows 11 builds flush on close.
+The child gets `STARTF_USESTDHANDLES` with invalid std handles, so it never inherits a redirected parent's handles; its console output always goes to the pseudo console.
 
 ## Overlays
 

@@ -472,6 +472,13 @@ CL_API int pty_cl_spawn(const char *file, char *const argv[], char *const envp[]
 
   memset(&si, 0, sizeof si);
   si.StartupInfo.cb = sizeof si;
+  /* Without this the child inherits our standard handles when they are
+   * redirected (as under CI), and cmd's builtins write there instead of to
+   * the pseudo console. Windows Terminal, Alacritty and WezTerm do the same. */
+  si.StartupInfo.dwFlags = STARTF_USESTDHANDLES;
+  si.StartupInfo.hStdInput = INVALID_HANDLE_VALUE;
+  si.StartupInfo.hStdOutput = INVALID_HANDLE_VALUE;
+  si.StartupInfo.hStdError = INVALID_HANDLE_VALUE;
   InitializeProcThreadAttributeList(NULL, 1, 0, &attr_size);
   si.lpAttributeList = malloc(attr_size);
   if (!si.lpAttributeList ||
