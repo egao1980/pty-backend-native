@@ -1,0 +1,54 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  natives:
+    uses: ./.github/workflows/natives.yml
+
+  # Same steps as cl-repository test-system.yml, plus the overlay for this
+  # runner staged into lib/<os>-<arch>/ first.
+  test:
+    needs: natives
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, pair: linux-amd64 }
+          - { os: ubuntu-24.04-arm, pair: linux-arm64 }
+          - { os: macos-latest, pair: darwin-arm64 }
+          - { os: windows-latest, pair: windows-amd64 }
+    runs-on: ${{ matrix.os }}
+    container: ${{ matrix.os == 'ubuntu-latest' && 'ghcr.io/egao1980/cl-repository/ci-base:latest' || fromJSON('null') }}
+    defaults:
+      run:
+        shell: bash
+    permissions:
+      contents: read
+      packages: read
+    env:
+      SBCL_VERSION: "2.6.7"
+      ROSWELL_VERSION: "26.02.116"
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v6
+        with:
+          name: native-${{ matrix.pair }}
+          path: lib/${{ matrix.pair }}
+      - uses: egao1980/cl-repository/.github/actions/setup-lisp@main
+        with:
+          version: latest
+          sbcl-version: ${{ env.SBCL_VERSION }}
+          roswell-version: ${{ env.ROSWELL_VERSION }}
+      - uses: egao1980/cl-repository/.github/actions/ci@main
+        with:
+          phase: install
+      - uses: egao1980/cl-repository/.github/actions/ci@main
+        with:
+          phase: test

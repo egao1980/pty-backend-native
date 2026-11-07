@@ -1,0 +1,11 @@
+.cl-repository/
+.qlot/
+cl-repo.lock
+*.fasl
+*.dx64fsl
+*.lx64fsl
+*.wx64fsl
+*~
+.DS_Store
+/build/
+/lib/

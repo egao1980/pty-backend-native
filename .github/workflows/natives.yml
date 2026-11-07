@@ -1,0 +1,37 @@
+# Build libpty-cl for every overlay with zig cc. Linux and Windows
+# cross-compile on one Ubuntu runner; darwin builds on macOS.
+# Uploads native-<os>-<arch> artifacts.
+name: Build natives
+
+on:
+  workflow_call:
+
+env:
+  ZIG_VERSION: "0.17.1"
+
+jobs:
+  cross:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: ${{ env.ZIG_VERSION }}
+      - run: ./scripts/build-pty-cl.sh linux-amd64 linux-arm64 windows-amd64
+      - uses: actions/upload-artifact@v6
+        with: { name: native-linux-amd64, path: lib/linux-amd64/ }
+      - uses: actions/upload-artifact@v6
+        with: { name: native-linux-arm64, path: lib/linux-arm64/ }
+      - uses: actions/upload-artifact@v6
+        with: { name: native-windows-amd64, path: lib/windows-amd64/ }
+
+  darwin:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: ${{ env.ZIG_VERSION }}
+      - run: ./scripts/build-pty-cl.sh darwin-arm64
+      - uses: actions/upload-artifact@v6
+        with: { name: native-darwin-arm64, path: lib/darwin-arm64/ }

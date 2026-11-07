@@ -1,0 +1,57 @@
+name: Publish OCI Package
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Package version (input, else v* tag, else .asd :version)"
+        required: false
+        default: ""
+      registry:
+        description: "OCI registry"
+        required: false
+        default: "ghcr.io"
+
+jobs:
+  natives:
+    uses: ./.github/workflows/natives.yml
+
+  resolve-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+      - id: ver
+        shell: bash
+        run: |
+          V="${{ inputs.version }}"
+          if [ -z "$V" ] && [[ "${GITHUB_REF_NAME}" == v* ]]; then
+            V="${GITHUB_REF_NAME#v}"
+          fi
+          if [ -z "$V" ]; then
+            V="$(sed -nE 's/^[[:space:]]*:version[[:space:]]+"([^"]+)".*/\1/p' pty-backend-native.asd | head -1)"
+          fi
+          [ -n "$V" ] || { echo "could not resolve package version" >&2; exit 1; }
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+
+  publish:
+    needs: [natives, resolve-version]
+    permissions:
+      contents: read
+      packages: write
+    uses: egao1980/cl-repository/.github/workflows/publish-native-package.yml@main
+    with:
+      package-name: pty-backend-native
+      version: ${{ needs.resolve-version.outputs.version }}
+      registry: ${{ inputs.registry || 'ghcr.io' }}
+      source-paths: |
+        pty-backend-native.asd
+        src
+        native
+        LICENSE
+        NOTICE
+        README.md
+    secrets: inherit
