@@ -1,13 +1,15 @@
 (defsystem "pty-backend-native"
-  :version "0.1.0"
+  :version "0.2.0"
   :description "pty-protocol backend: forkpty-style spawn on Unix, ConPTY on Windows (small C library)"
   :author "egao1980"
   :license "MIT"
+  :defsystem-depends-on ("asdf-native")
   :depends-on ("pty-protocol" "cffi" "uiop" "trivial-garbage")
   :serial t
   :pathname "src"
   :components ((:file "package")
-               (:file "loader")
+               ;; $PTY_CL_NATIVE, native/ (overlay), lib/<os>-<arch>/ (checkout)
+               (:native-library "pty-cl")
                (:file "ffi")
                (:file "backend"))
   :in-order-to ((test-op (test-op "pty-backend-native/tests")))
