@@ -377,6 +377,8 @@ static int load_conpty(void) {
 typedef struct pty_cl {
   cl_hpcon hpc;
   HANDLE in_write, out_read, process, closer;
+  ULONGLONG quiet_since; /* last output, or when the exit was first seen */
+  int exit_seen;
   DWORD pid;
   int exited, code;
   int last_errno;
@@ -470,6 +472,13 @@ CL_API int pty_cl_spawn(const char *file, char *const argv[], char *const envp[]
 
   memset(&si, 0, sizeof si);
   si.StartupInfo.cb = sizeof si;
+  /* Without this the child inherits our standard handles when they are
+   * redirected (as under CI), and cmd's builtins write there instead of to
+   * the pseudo console. Windows Terminal, Alacritty and WezTerm do the same. */
+  si.StartupInfo.dwFlags = STARTF_USESTDHANDLES;
+  si.StartupInfo.hStdInput = INVALID_HANDLE_VALUE;
+  si.StartupInfo.hStdOutput = INVALID_HANDLE_VALUE;
+  si.StartupInfo.hStdError = INVALID_HANDLE_VALUE;
   InitializeProcThreadAttributeList(NULL, 1, 0, &attr_size);
   si.lpAttributeList = malloc(attr_size);
   if (!si.lpAttributeList ||
@@ -531,7 +540,10 @@ static DWORD WINAPI closer_thread(LPVOID hpc) {
 
 /* After the child exits, ConPTY keeps the output pipe open until the pseudo
  * console is closed, and ClosePseudoConsole can block until its last output
- * is read. Close it on a thread and keep reading until the pipe breaks. */
+ * is read. Close it on a thread and keep reading until the pipe breaks.
+ * Closing too early drops output ConPTY has not rendered yet (a quick
+ * `echo` vanishes), so wait until output has been quiet for QUIET_MS. */
+#define QUIET_MS 200
 static void start_closing(pty_cl_t *p) {
   if (p->hpc && !p->closer) {
     p->closer = CreateThread(NULL, 0, closer_thread, p->hpc, 0, NULL);
@@ -557,9 +569,14 @@ CL_API long pty_cl_read(pty_cl_t *p, uint8_t *buf, size_t len, int timeout_ms) {
         p->last_errno = (int)e;
         return -2;
       }
+      p->quiet_since = GetTickCount64();
       return (long)n;
     }
-    if (WaitForSingleObject(p->process, 0) == WAIT_OBJECT_0) start_closing(p);
+    if (WaitForSingleObject(p->process, 0) == WAIT_OBJECT_0) {
+      ULONGLONG now = GetTickCount64();
+      if (!p->exit_seen) { p->exit_seen = 1; p->quiet_since = now; }
+      if (now - p->quiet_since >= QUIET_MS) start_closing(p);
+    }
     if (timeout_ms >= 0 && GetTickCount64() - start >= (ULONGLONG)timeout_ms) return 0;
     Sleep(5);
   }

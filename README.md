@@ -9,6 +9,8 @@
 
 No Lisp code runs in a forked child.
 
+The child gets `STARTF_USESTDHANDLES` with invalid std handles, so it never inherits a redirected parent's handles; its console output always goes to the pseudo console.
+
 ## Overlays
 
 `linux/amd64` and `linux/arm64` (glibc ≥ 2.31) get `libpty-cl.so`, `darwin/arm64` gets `libpty-cl.dylib`, and `windows/amd64` gets `pty-cl.dll`. `scripts/build-pty-cl.sh [os-arch …]` builds them with `zig cc`, which cross-compiles every target from one host. `PTY_CL_NATIVE=/dir` points the loader elsewhere.
