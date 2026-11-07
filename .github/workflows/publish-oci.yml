@@ -52,6 +52,5 @@ jobs:
         src
         native
         LICENSE
-        NOTICE
         README.md
     secrets: inherit
